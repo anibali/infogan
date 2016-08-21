@@ -1,12 +1,12 @@
 --[[
 
+This is a Torch implementation of InfoGAN.
+
 "InfoGAN: Interpretable Representation Learning by Information Maximizing
  Generative Adversarial Nets"
-  - http://arxiv.org/abs/1606.03657
+  - Chen et al, http://arxiv.org/abs/1606.03657
 
 --]]
-
-package.path = package.path .. ';./src/?.lua'
 
 require('torch')    -- Essential Torch utilities
 require('image')    -- Torch image handling
@@ -16,40 +16,52 @@ require('cutorch')  -- 'torch' on the GPU
 require('cunn')     -- 'nn' on the GPU
 require('cudnn')    -- Torch bindings to CuDNN
 
-torch.setdefaulttensortype('torch.FloatTensor')
-
--- Set manual seeds for reproducible RNG
-torch.manualSeed(1234)
-cutorch.manualSeedAll(1234)
-math.randomseed(1234)
-
 local tnt = require('torchnet')
 local nninit = require('nninit')
 local pl = require('pl.import_into')()
 
+package.path = package.path .. ';./src/?.lua'
+
 local MnistDataset = require('MnistDataset')
 
---- CONSTANTS ---
+--- OPTIONS ---
 
--- Organisation of training examples during training
-local n_epochs = 50
-local n_updates_per_epoch = 100
-local batch_size = 128
+local opts = pl.lapp [[
+Trains an InfoGAN network
+  --epochs (default 50) Number of training epochs
+  --updates-per-epoch (default 100) Number of batches per epoch
+  --batch-size (default 128) Number of examples per batch
+  --disc-learning-rate (default 2e-4) Discriminator network learning rate
+  --gen-learning-rate (default 1e-3) Generator network learning rate
+  --info-reg-coeff (default 1.0) "lambda" from the InfoGAN paper
+  --rng-seed (default 1234) Seed for random number generation
+  --gen-inputs (default 74) Number of inputs to the generator network
+  --uniform-salient-vars (default 2) Number of non-categorical salient inputs
+]]
 
--- Total number of generator inputs
-local n_gen_inputs = 74
--- Number of noise vars which will be treated as salient attributes
-local n_salient_vars = 12
+local n_epochs = opts.epochs
+local n_updates_per_epoch = opts.updates_per_epoch
+local batch_size = opts.batch_size
+local info_regularisation_coefficient = opts.info_reg_coeff
+local disc_learning_rate = opts.disc_learning_rate
+local gen_learning_rate = opts.gen_learning_rate
+local rng_seed = opts.rng_seed
+local n_gen_inputs = opts.gen_inputs
+local n_salient_vars = 10 + opts.uniform_salient_vars
 
--- "lambda" from the InfoGAN paper
-local info_regularisation_coefficient = 1.0
-
--- Learning rates for the Adam optimisers
-local disc_learning_rate = 2e-4
-local gen_learning_rate = 1e-3
-
-assert(n_salient_vars >= 10 and n_salient_vars < n_gen_inputs)
 local n_noise_vars = n_gen_inputs - n_salient_vars
+
+assert(n_salient_vars >= 10 and n_salient_vars < n_gen_inputs,
+  'At least one generator input must be non-salient noise')
+
+--- INIT ---
+
+-- Set manual seeds for reproducible RNG
+torch.manualSeed(rng_seed)
+cutorch.manualSeedAll(rng_seed)
+math.randomseed(rng_seed)
+
+torch.setdefaulttensortype('torch.FloatTensor')
 
 --- DATA ---
 
