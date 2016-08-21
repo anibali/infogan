@@ -54,11 +54,7 @@ local n_noise_vars = n_gen_inputs - n_salient_vars
 --- DATA ---
 
 local train_data = MnistDataset.new('data/mnist/train_32x32.t7')
-
-local train_iter = train_data:make_iterator{
-  batch_size = batch_size,
-  subset = 'all'
-}
+local train_iter = train_data:make_iterator(batch_size)
 
 --- MODEL ---
 

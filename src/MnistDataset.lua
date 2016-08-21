@@ -19,9 +19,8 @@ MnistDataset.__init = argcheck{
 MnistDataset.make_iterator = argcheck{
   {name = 'self', type = 'MnistDataset'},
   {name = 'batch_size', type = 'number', default = 32},
-  {name = 'subset', type = 'string', default = 'all'},
   {name = 'n_threads', type = 'number', default = 8},
-  call = function(self, batch_size, subset, n_threads)
+  call = function(self, batch_size, n_threads)
     local inputs = self.inputs
     local targets = self.targets
 
@@ -35,23 +34,12 @@ MnistDataset.make_iterator = argcheck{
     local gen = torch.Generator()
     torch.manualSeed(gen, 1234)
     local indices = torch.randperm(gen, inputs:size(1)):long()
-    if subset == 'training' then
-      indices = indices:narrow(1, 1, math.floor(0.8 * indices:size(1)))
-    elseif subset == 'validation' then
-      indices = indices:narrow(1, math.floor(0.8 * indices:size(1)) + 1,
-        indices:size(1) - math.floor(0.8 * indices:size(1)))
-    elseif subset == 'all' then
-      -- No need to narrow indices
-    else
-      error('unrecognised subset: ' .. subset)
-    end
 
     return tnt.ParallelDatasetIterator{
       ordered = true,
       nthread = n_threads,
       closure = function()
         local tnt = require('torchnet')
-        torch.manualSeed(1234)
 
         return tnt.BatchDataset{
           batchsize = batch_size,
