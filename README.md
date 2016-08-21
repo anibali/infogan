@@ -6,6 +6,8 @@ Representation Learning by Information Maximizing Generative Adversarial
 Nets"](http://arxiv.org/abs/1606.03657). The original TensorFlow implementation
 can be found at https://github.com/openai/InfoGAN.
 
+![Generated MNIST digits](images/generated_mnist_digits.png)
+
 ## Requirements
 
 * A cuDNN 5 capable NVIDIA graphics card
