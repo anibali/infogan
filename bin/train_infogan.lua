@@ -73,15 +73,15 @@ local train_iter = train_data:make_iterator(batch_size)
 local Seq = nn.Sequential
 local ReLU = cudnn.ReLU
 
-local SpatBatchNorm = function(n_outputs)
+local function SpatBatchNorm(n_outputs)
   return nn.SpatialBatchNormalization(n_outputs, 1e-5, 0.1)
-    :init('weight', nninit.normal, 0.0, 0.02) -- Gamma
+    :init('weight', nninit.normal, 1.0, 0.02) -- Gamma
     :init('bias', nninit.constant, 0)         -- Beta
 end
 
-local BatchNorm = function(n_outputs)
+local function BatchNorm(n_outputs)
   return nn.BatchNormalization(n_outputs, 1e-5, 0.1)
-    :init('weight', nninit.normal, 0.0, 0.02) -- Gamma
+    :init('weight', nninit.normal, 1.0, 0.02) -- Gamma
     :init('bias', nninit.constant, 0)         -- Beta
 end
 
