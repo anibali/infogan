@@ -8,6 +8,16 @@ can be found at https://github.com/openai/InfoGAN.
 
 ![Generated MNIST digits](images/generated_mnist_digits.png)
 
+## Features
+
+Note: unchecked features are not yet implemented.
+
+* [x] Implement the InfoGAN network architecture
+* [ ] Use variational mutual information maximization for the error calculations
+      (as per the paper)
+* [x] CLI options for tweaking noise inputs and salient variables
+* [x] Deterministic training
+
 ## Requirements
 
 * A cuDNN 5 capable NVIDIA graphics card
