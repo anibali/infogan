@@ -20,8 +20,10 @@ local tnt = require('torchnet')
 local nninit = require('nninit')
 local pl = require('pl.import_into')()
 
-package.path = package.path .. ';./src/?.lua'
+package.path = package.path .. ';./src/?.lua;./src/?/init.lua'
 
+local pdist = require('pdist')
+local MutualInformationCriterion = require('MutualInformationCriterion')
 local MnistDataset = require('MnistDataset')
 
 --- OPTIONS ---
@@ -69,6 +71,17 @@ local train_data = MnistDataset.new('data/mnist/train_32x32.t7')
 local train_iter = train_data:make_iterator(batch_size)
 
 --- MODEL ---
+
+local dist = pdist.Hybrid()
+  :add(pdist.Categorical{n = 10, probs = torch.CudaTensor(10):fill(1 / 10)})
+  :add(pdist.Gaussian{
+    n = n_salient_vars - 10,
+    mean = torch.CudaTensor(n_salient_vars - 10):fill(0),
+    stddev = torch.CudaTensor(n_salient_vars - 10):fill(1),
+    fixed_stddev = true
+  })
+
+local n_salient_params = dist:n_params()
 
 local Seq = nn.Sequential
 local ReLU = cudnn.ReLU
@@ -171,14 +184,8 @@ local info_head = Seq()
   :add(BatchNorm(128))
   :add(LeakyReLU())
   -- 128
-  :add(Linear(128, n_salient_vars))
-  -- n_salient_vars
-
-local concat = nn.ConcatTable():add(nn.Narrow(2, 1, 10))
-if n_salient_vars > 10 then
-  concat:add(nn.Narrow(2, 11, n_salient_vars - 10))
-end
-info_head:add(concat)
+  :add(Linear(128, n_salient_params))
+  -- n_salient_params
 
 local discriminator = Seq()
   :add(discriminator_body)
@@ -193,11 +200,7 @@ discriminator:cuda()
 --- CRITERIA ---
 
 local disc_head_criterion = nn.BCECriterion()
-local info_head_criterion = nn.ParallelCriterion()
-  :add(nn.CrossEntropyCriterion())
-if n_salient_vars > 10 then
-  info_head_criterion:add(nn.MSECriterion())
-end
+local info_head_criterion = MutualInformationCriterion.new(dist)
 
 disc_head_criterion:cuda()
 info_head_criterion:cuda()
@@ -238,31 +241,6 @@ local real_loss_meter = tnt.AverageValueMeter()
 local gen_loss_meter = tnt.AverageValueMeter()
 local time_meter = tnt.TimeMeter()
 
--- Creates targets for the salient part of the generator input
-local function salient_input_to_target(tensor)
-  local categorical = tensor:narrow(2, 1, 10)
-  local max_vals, max_indices = categorical:max(2)
-  if n_salient_vars > 10 then
-    local continuous = tensor:narrow(2, 11, n_salient_vars - 10):clone()
-    return {max_indices, continuous}
-  else
-    return {max_indices}
-  end
-end
-
--- Populates `res` such that each row contains a random one-hot vector.
--- That is, each row will be almost full of 0s, except for a 1 in a random
--- position.
-local function random_one_hot(res)
-  local batch_size = res:size(1)
-  local n_categories = res:size(2)
-
-  local probabilities = res.new(n_categories):fill(1 / n_categories)
-  local indices = torch.multinomial(probabilities, batch_size, true):view(-1, 1)
-
-  res:zero():scatter(2, indices, 1)
-end
-
 -- Calculate outputs and gradients for the discriminator
 local do_discriminator_step = function(new_params)
   if new_params ~= disc_params then
@@ -290,10 +268,7 @@ local do_discriminator_step = function(new_params)
   discriminator_body:backward(real_input, dloss_ddheadin)
 
   -- Train with fake images (from generator)
-  random_one_hot(gen_input:narrow(2, 1, 10))
-  if n_salient_vars > 10 then
-    gen_input:narrow(2, 11, n_salient_vars - 10):uniform(-1, 1)
-  end
+  dist:sample(gen_input:narrow(2, 1, n_salient_vars), dist.prior_params)
   gen_input:narrow(2, n_salient_vars + 1, n_noise_vars):normal(0, 1)
   generator:forward(gen_input)
   fake_input:resizeAs(generator.output):copy(generator.output)
@@ -307,12 +282,11 @@ local do_discriminator_step = function(new_params)
   discriminator_body:backward(fake_input, dloss_ddheadin)
 
   local iheadout = info_head:forward(dbodyout)
-  local info_target = salient_input_to_target(gen_input:narrow(2, 1, n_salient_vars))
+  local info_target = gen_input:narrow(2, 1, n_salient_vars)
   loss_info = info_head_criterion:forward(iheadout, info_target) * info_regularisation_coefficient
+  assert(loss_info == loss_info, 'info loss is nan')
   local dloss_diheadout = info_head_criterion:backward(iheadout, info_target)
-  for i, t in ipairs(dloss_diheadout) do
-    t:mul(info_regularisation_coefficient)
-  end
+  dloss_diheadout:mul(info_regularisation_coefficient)
   local dloss_diheadin = info_head:backward(dbodyout, dloss_diheadout)
   discriminator_body:backward(fake_input, dloss_diheadin)
 

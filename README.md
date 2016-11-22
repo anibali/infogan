@@ -10,10 +10,8 @@ can be found at https://github.com/openai/InfoGAN.
 
 ## Features
 
-Note: unchecked features are not yet implemented.
-
 * [x] Implement the InfoGAN network architecture
-* [ ] Use variational mutual information maximization for the error calculations
+* [x] Use variational mutual information maximization for the error calculations
       (as per the paper)
 * [x] CLI options for tweaking noise inputs and salient variables
 * [x] Deterministic training
