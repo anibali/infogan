@@ -40,6 +40,9 @@ RUN luarocks install nninit
 # Install Torchnet framework
 RUN luarocks install torchnet
 
+# Install autograd
+RUN luarocks install autograd
+
 # Set working dir
 RUN mkdir /app
 WORKDIR /app

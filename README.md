@@ -6,14 +6,14 @@ Representation Learning by Information Maximizing Generative Adversarial
 Nets"](http://arxiv.org/abs/1606.03657). The original TensorFlow implementation
 can be found at https://github.com/openai/InfoGAN.
 
-![Generated MNIST digits](images/generated_mnist_digits.png)
+![Generated MNIST digits varying c_1](images/output_varying_c1.png)
+
+![Generated MNIST digits varying c_2](images/output_varying_c2.png)
 
 ## Features
 
-Note: unchecked features are not yet implemented.
-
 * [x] Implement the InfoGAN network architecture
-* [ ] Use variational mutual information maximization for the error calculations
+* [x] Use variational mutual information maximization for the error calculations
       (as per the paper)
 * [x] CLI options for tweaking noise inputs and salient variables
 * [x] Deterministic training
