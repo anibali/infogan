@@ -360,12 +360,8 @@ local function tile_images(images, rows, cols)
 end
 
 -- Constant noise for each row of the fake input visualisation
-local constant_noise = torch.CudaTensor(math.floor(batch_size / 10), n_gen_inputs)
-constant_noise:narrow(2, 1, 10):zero()
-if n_salient_vars > 10 then
-  constant_noise:narrow(2, 11, n_salient_vars - 10):uniform(-1, 1)
-end
-constant_noise:narrow(2, n_salient_vars + 1, n_noise_vars):normal(0, 1)
+local constant_noise = torch.CudaTensor(5, n_gen_inputs)
+dist:sample(constant_noise:narrow(2, 1, n_salient_vars), dist.prior_params)
 
 local iter_inst = train_iter()
 
@@ -407,20 +403,39 @@ for epoch = 1, n_epochs do
     )
   end
 
-  -- Generate fake images. Noise varies across columns (horizontally),
-  -- category varies across rows (vertically).
-  local cols = constant_noise:size(1)
-  for row = 1, 10 do
-    local row_tensor = gen_input:narrow(1, 1 + (row - 1) * cols, cols)
-    row_tensor:copy(constant_noise)
+  -- Generate fake images. Noise varies across rows (vertically),
+  -- category varies across columns (horizontally).
+  local rows = constant_noise:size(1)
+  gen_input:resize(50, n_gen_inputs)
+  local gen_input_view = gen_input:view(5, 10, n_gen_inputs)
 
-    local category = row
-    for col = 1, cols do
-      row_tensor[{col, category}] = 1
+  generator:evaluate()
+  for col = 1, 10 do
+    local col_tensor = gen_input_view:select(2, col)
+    col_tensor:copy(constant_noise)
+
+    local category = col
+    for row = 1, rows do
+      -- Vary c1 across columns
+      col_tensor[{row, {1, 10}}]:zero()
+      col_tensor[{row, category}] = 1
     end
   end
-  generator:evaluate()
-  local fake_images = tile_images(generator:forward(gen_input):float(), 10, 12)
+  local images_varying_c1 = tile_images(generator:forward(gen_input):float(), 5, 10)
+
+  for col = 1, 10 do
+    local col_tensor = gen_input_view:select(2, col)
+    col_tensor:copy(constant_noise)
+
+    for row = 1, rows do
+      -- Use different c1 for each row
+      col_tensor[{row, {1, 10}}]:zero()
+      col_tensor[{row, row}] = 1
+      -- Vary c2 from -2 to 2 across columns
+      col_tensor[{row, {11, 11}}]:fill((col - 5.5) / 2.25)
+    end
+  end
+  local images_varying_c2 = tile_images(generator:forward(gen_input):float(), 5, 10)
   generator:training()
 
   -- Update log
@@ -450,8 +465,13 @@ for epoch = 1, n_epochs do
   local image_dir = pl.path.join('out', 'images')
   pl.dir.makepath(image_dir)
 
-  local image_basename = string.format('fake_images_%04d.png', epoch)
-  image.save(pl.path.join(image_dir, image_basename), fake_images)
+  image.save(
+    pl.path.join(image_dir, string.format('varying_c1_%04d.png', epoch)),
+    images_varying_c1)
+
+  image.save(
+    pl.path.join(image_dir, string.format('varying_c2_%04d.png', epoch)),
+    images_varying_c2)
 
   -- Checkpoint the networks every 10 epochs
   if epoch % 10 == 0 then

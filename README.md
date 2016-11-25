@@ -6,7 +6,9 @@ Representation Learning by Information Maximizing Generative Adversarial
 Nets"](http://arxiv.org/abs/1606.03657). The original TensorFlow implementation
 can be found at https://github.com/openai/InfoGAN.
 
-![Generated MNIST digits](images/generated_mnist_digits.png)
+![Generated MNIST digits varying c_1](images/output_varying_c1.png)
+
+![Generated MNIST digits varying c_2](images/output_varying_c2.png)
 
 ## Features
 
