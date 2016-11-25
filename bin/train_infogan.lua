@@ -21,7 +21,6 @@ local pl = require('pl.import_into')()
 package.path = package.path .. ';./src/?.lua;./src/?/init.lua'
 
 local pdist = require('pdist')
-local MutualInformationCriterion = require('MutualInformationCriterion')
 local MnistDataset = require('MnistDataset')
 local model_builder = require('model_builder')
 
@@ -96,7 +95,7 @@ discriminator:cuda()
 --- CRITERIA ---
 
 local disc_head_criterion = nn.BCECriterion()
-local info_head_criterion = MutualInformationCriterion.new(dist)
+local info_head_criterion = pdist.MutualInformationCriterion(dist)
 
 disc_head_criterion:cuda()
 info_head_criterion:cuda()

@@ -1,7 +1,7 @@
 local autograd = require('autograd')
 require('nn')
 
-local MutualInformationCriterion, Parent = torch.class('nn.MutualInformationCriterion', 'nn.Criterion')
+local MutualInformationCriterion, Parent = torch.class('pdist.MutualInformationCriterion', 'nn.Criterion', require('pdist.env'))
 
 function MutualInformationCriterion.make_loss_function(dist)
   return function(p, target)
