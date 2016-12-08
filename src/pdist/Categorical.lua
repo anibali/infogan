@@ -38,21 +38,26 @@ Categorical.n_params = argcheck{
   end
 }
 
-Categorical.shape_params = function(self, flat_params)
-  local shaped_params = {}
-
-  if flat_params:dim() == 1 then
-    flat_params = torch.view(flat_params, 1, flat_params:size(1))
+local function softmax(vals)
+  if vals:dim() == 1 then
+    vals = torch.view(vals, 1, vals:size(1))
   end
 
-  if flat_params:dim() == 2 then
-    local exp_z = torch.exp(flat_params)
+  if vals:dim() == 2 then
+    vals = vals - torch.max(vals)
+    local exp_z = torch.exp(vals)
     local denom = torch.expandAs(torch.sum(exp_z, 2), exp_z)
 
-    shaped_params.probs = torch.cdiv(exp_z, denom)
+    return torch.cdiv(exp_z, denom)
   else
     error('wrong dimensions')
   end
+end
+
+Categorical.shape_params = function(self, flat_params)
+  local shaped_params = {
+    probs = softmax(flat_params)
+  }
 
   return shaped_params
 end
