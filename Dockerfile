@@ -18,7 +18,7 @@ RUN git clone https://github.com/xianyi/OpenBLAS.git /tmp/OpenBLAS \
  && rm -rf /tmp/OpenBLAS
 
 # Install Torch
-ARG TORCH_DISTRO_COMMIT=4bfc2da1e78069f98936ba8f1fc7e8b689699e97
+ARG TORCH_DISTRO_COMMIT=b6ea0652502cda80ccc174c47459ec1b0dc2a9c6
 RUN git clone https://github.com/torch/distro.git ~/torch --recursive \
  && cd ~/torch \
  && git checkout "$TORCH_DISTRO_COMMIT" \
