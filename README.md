@@ -32,6 +32,11 @@ git clone https://github.com/anibali/infogan
 cd infogan
 ```
 
+**NOTE:** If you are using a Pascal architecture GPU (CUDA 8.0), you will need
+to modify the Dockerfile to build from a CUDA 8.0 base image. Refer to
+https://github.com/anibali/infogan/issues/5 for more details. Please make this
+change before proceeding.
+
 Build the Docker image which contains Torch and all other required
 dependencies.
 
